@@ -1,0 +1,28 @@
+# see options at
+# https://github.com/PyCQA/pylint/blob/master/pylintrc
+
+[MASTER]
+jobs=0
+
+disable=missing-docstring,
+
+[REPORTS]
+# https://pylint.readthedocs.io/en/latest/user_guide/output.html
+msg-template='{abspath}:{line}:{column}: {msg} ({symbol})'
+
+[BASIC]
+# allow for lowercase constants
+const-rgx=(([A-Za-z_][A-Za-z0-9_]*)|(__.*__))$
+
+# allow for longer function names
+function-rgx=[a-z_][a-z0-9_]{2,50}$
+
+[DESIGN]
+max-args=6
+
+ignored-argument-names=(_.*)|(context)
+
+max_branches=6
+
+[FORMAT]
+max-line-length=120

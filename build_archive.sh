@@ -10,7 +10,6 @@ set -o nounset
 # into /opt, is can be easily import-ed; see:
 # https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html#configuration-layers-path
 mkdir python
-cp -r core python
-pip install -r core/requirements.txt -t python --no-cache-dir
-zip -rm layer.zip python
-zip -d layer.zip '*/__pycache__/*'
+cp -r lambdacore python
+pip install -r lambdacore/requirements.txt -t python --no-cache-dir
+zip -rm layer.zip python -x '*/__pycache__/*'

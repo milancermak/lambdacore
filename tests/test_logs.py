@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from core import log_invocation
+from lambdacore import log_invocation
 
 
 # mock of the context object that gets passed into the handler

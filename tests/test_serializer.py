@@ -5,7 +5,7 @@ import math
 
 import pytest
 
-from core import StandardSerializer
+from lambdacore import StandardSerializer
 
 
 @pytest.fixture()

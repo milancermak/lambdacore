@@ -77,7 +77,7 @@ def log_invocation(func):
     return wrapper
 
 
-class log_duration(ContextDecorator):
+class log_duration(ContextDecorator): # pylint: disable=invalid-name
     """
     A context manager for measuring duration of the code inside its block.
     It can also be used as a decorator.
@@ -102,6 +102,7 @@ class log_duration(ContextDecorator):
 
     """
     def __init__(self, event_name, duration_key='duration', **kwargs):
+        self.start_time = 0
         self.event_name = event_name
         self.duration_key = duration_key
         self.logger_args = kwargs

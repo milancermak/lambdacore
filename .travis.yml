@@ -10,9 +10,9 @@ env:
     - AWS_DEFAULT_REGION: us-east-1
 
 install:
-  - pip install -r core/requirements.txt
+  - pip install -r lambdacore/requirements.txt
   - pip install -r requirements-dev.txt
 
 script:
   - pytest tests -vrf
-  - pylint core
+  - pylint lambdacore

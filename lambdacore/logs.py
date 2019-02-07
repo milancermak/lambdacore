@@ -1,6 +1,8 @@
+from contextlib import ContextDecorator
 import functools
 import logging
 import os
+import time
 
 import structlog
 
@@ -73,3 +75,41 @@ def log_invocation(func):
             return result
 
     return wrapper
+
+
+class log_duration(ContextDecorator):
+    """
+    A context manager for measuring duration of the code inside its block.
+    It can also be used as a decorator.
+
+    It takes a single positional argument, the name of the logged event.
+    By default, the duration value is logged under the 'duration' name, but
+    you can pass in a 'duration_key' keyword argument to change it. Additional
+    kwargs will be passed directly to the logger.
+
+    The duration is measured in fractions of seconds using time.time().
+
+    Usage:
+
+    # as context manager
+    with log_duration('calculation'):
+        result = 1 + 1
+
+    # as decorator
+    @log_duration('http call', duration_key='http_time_spent', api_version='1.0')
+    def make_http_call():
+        pass
+
+    """
+    def __init__(self, event_name, duration_key='duration', **kwargs):
+        self.event_name = event_name
+        self.duration_key = duration_key
+        self.logger_args = kwargs
+
+    def __enter__(self):
+        self.start_time = time.time()
+
+    def __exit__(self, *args):
+        duration = time.time() - self.start_time
+        self.logger_args[self.duration_key] = duration
+        logger.info(self.event_name, **self.logger_args)

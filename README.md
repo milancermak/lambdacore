@@ -1,4 +1,4 @@
-# lambda-layer-core
+# lambdacore
 An AWS Lambda Layer of various core functions I use all the time in my Lambda functions.
 
 [![Build Status](https://travis-ci.com/milancermak/lambda-layer-core.svg?branch=master)](https://travis-ci.com/milancermak/lambda-layer-core)
@@ -13,7 +13,7 @@ Provides two useful tools for logging.
 
 Example usage:
 ```python
-from core import log_invocation
+from lambdacore import log_invocation
 
 @log_invocation
 def handler(event, context):
@@ -23,12 +23,33 @@ def handler(event, context):
     }
 ```
 
+##### log_duration
+`log_duration` is a context manager for measuring duration of the code inside its block. It can also be used a decorator.
+
+Basic usage:
+```python
+# as a context manager
+with log_duration('needle in haystack'):
+    find_needle(haystack) # long-running expensive operation
+
+# as a decorator
+@log_duration('http call')
+def fetch_from_api():
+    pass
+```
+It takes one required positional argument, the name of the event. It uses the module's logger (see below) to log and INFO level message containing the duration of the encompased code block. By default, the duration is available as the `duration` argument in the logged JSON structure. This can be changed by passing in a `duration_key` kwarg. You can pass in additional kwargs to `log_duration`; they will be passed directly to the logger call.
+
+```python
+with log_duration('custom', duration_key='time_to_compute', operation_version=4.2):
+    computation()
+```
+
 ##### logger
 As the name suggests, `logger` is a log interface built on [`structlog`](https://www.structlog.org/en/stable/). It provides structured (JSON) logging of events. This allows to for easy processing and analysis later.
 
 Example usage:
 ```python
-from core import logger
+from lambdacore import logger
 
 def foo():
     try:
@@ -47,7 +68,7 @@ The `StandardSerializer` is intended for serializing and deserializing native Py
 Example usage:
 ```python
 import enum, json
-from core import StandardSerializer
+from lambdacore import StandardSerializer
 
 serializer = StandardSerializer()
 

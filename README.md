@@ -58,7 +58,7 @@ class Sport(enum.Enum):
 
 class Athlete:
     deserialized_types = {
-        'name': 'string',
+        'name': 'str,
         'age': 'int',
         'sport': 'Sport'
     }
@@ -70,12 +70,12 @@ class Athlete:
         'sport': 'athleteSport'
     }
 
-    def __init__(self, name, age, sport):
+    def __init__(self, name=None, age=None, sport=None):
         self.name = name
         self.age = age
         self.sport = sport
 
-jay = Athlete('Jay', 20, Sport.JUMP)
+jay = Athlete(name='Jay', age=20, sport=Sport.JUMP)
 se_jay = serializer.serialize(jay) # {'athleteName': 'Jay', 'athleteAge': 20, 'athleteSport': 'Jump'}
 # se_jay can now be used with boto3 dynamodb.put_item or json.dumps
 

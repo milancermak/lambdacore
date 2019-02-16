@@ -1,3 +1,5 @@
+# pylint: disable=too-few-public-methods
+
 import datetime
 import enum
 import json
@@ -85,6 +87,7 @@ def test_serialization_of_primitive_object():
 
 
 def test_serialization_of_compound_object(make_file_discoverable):
+    # pylint: disable=unused-argument
     serializer = StandardSerializer()
     primitive = Primitive()
     original = Compound()

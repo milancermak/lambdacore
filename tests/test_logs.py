@@ -27,7 +27,7 @@ def assert_service_context(log_record):
 
 @pytest.mark.parametrize('ret_val', [1, None])
 def test_log_invocation_decorator(caplog, ret_val):
-    f_name = sys._getframe().f_code.co_name
+    f_name = sys._getframe().f_code.co_name # pylint: disable=protected-access
     invocation_context = Context(function_name=f_name,
                                  function_version='$LATEST',
                                  aws_request_id=str(uuid.uuid4()))
@@ -45,7 +45,7 @@ def test_log_invocation_decorator(caplog, ret_val):
     assert_service_context(result_log)
 
 def test_log_invocation_decorator_throwing(caplog):
-    f_name = sys._getframe().f_code.co_name
+    f_name = sys._getframe().f_code.co_name # pylint: disable=protected-access
     invocation_context = Context(function_name=f_name,
                                  function_version='$LATEST',
                                  aws_request_id=str(uuid.uuid4()))

@@ -1,0 +1,15 @@
+---
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  LambdacoreLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: lambdacore
+      ContentUri: './layer.zip' # created during CI, see buildspec.yml
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+      LicenseInfo: Apache-2.0

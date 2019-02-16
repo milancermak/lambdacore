@@ -1,0 +1,65 @@
+---
+
+version: 0.2
+
+env:
+  variables:
+    # APP_ID and ARTIFACTS_BUCKET are available
+    # coming from the CD pipline
+    PIP_CACHE: pip_cache # used in install_deps.sh
+
+phases:
+  install:
+    commands:
+      - printenv
+      - apt-get update && apt-get install zip
+      - aws --version
+      - chmod +x scripts/*.sh # for some reason, +x does not carry over from git
+      - scripts/install_deps.sh
+      - pip list
+
+  pre_build:
+    commands:
+      - pytest tests -vrf
+      - scripts/lint_py.sh
+      - scripts/lint_cfn.sh
+
+  build:
+    commands:
+      - scripts/build_layer.sh
+
+  post_build:
+    commands:
+      # ensure we're not deploying a stale version
+      - NEW_VERSION=$(cat SAR_APP_VERSION.txt)
+      - LATEST_VERSION=$(aws serverlessrepo list-application-versions \
+                             --application-id $APP-ID \
+                             --query 'Versions[0].SemanticVersion')
+      - if [ "$LATEST_VERSION" == "$NEW_VERSION" ]; then \
+          echo "Trying to deploy version $NEW_VERSION that already exists in SAR"; exit 1; \
+        fi
+
+      # make the layer available to SAR
+      - sam package \
+            --template-file template.yml \
+            --s3-bucket $ARTIFACTS_BUCKET \
+            --output-template-file packaged.yml
+      - "OBJECT_KEY=$(perl -n -e'/ContentUri: (.*)/ && print $1;' < packaged.yml | cut -f4 -d/)"
+      - aws s3api put-object-acl \
+            --bucket $ARTIFACTS_BUCKET \
+            --key $OBJECT_KEY \
+            --acl public-read
+
+      # publish the new version, keep the app up-to-date
+      - aws serverlessrepo create-application-version \
+            --application-id $APP_ID \
+            --semantic-version $NEW_VERSION \
+            --source-code-url 'https://github.com/milancermak/lambdacore' \
+            --template-body file://packaged.yml
+      - aws serverlessrepo update-application \
+            --application-id $APP_ID \
+            --readme-body file://README.md
+
+cache:
+  paths:
+    - pip_cache

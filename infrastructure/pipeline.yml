@@ -1,0 +1,213 @@
+---
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CD pipeline
+
+Parameters:
+  Service:
+    Description: Name of the service, propagated all over the place. Choose wisely.
+    Type: String
+    AllowedPattern: '^[a-z]+(-[a-z]+)*$'
+    ConstraintDescription: must contain only lowercase letters and hyphens
+
+  ApplicationId:
+    Description: The ARN of the Serverless Application Repository App
+    Type: String
+
+  GitHubRepo:
+    Type: String
+    Default: lambdacore
+    AllowedPattern: '[A-Za-z0-9-]+'
+
+  GitHubRepoOwner:
+    Type: String
+    Default: milancermak
+    AllowedPattern: '[A-Za-z0-9-]+'
+
+  GitHubRepoBranch:
+    Type: String
+    Default: master
+    AllowedPattern: '[A-Za-z0-9-]+'
+
+  GitHubOAuthToken:
+    Type: String
+    NoEcho: true
+    MinLength: 40
+    MaxLength: 40
+    AllowedPattern: '[a-z0-9]*'
+
+Resources:
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      BucketName: !Sub '${Service}-artifacts'
+
+  CloudformationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # TODO: allow codebuild to push to SAR
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Policies:
+        - PolicyName: ServiceRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub '${ArtifactsBucket.Arn}/*'
+              - Sid: SamTranslateDependencyPolicy
+                Effect: Allow
+                Action:
+                  - iam:ListPolicies
+                Resource: '*'
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Location: !Sub '${ArtifactsBucket}/buildcache'
+        Type: S3
+      Description: !Sub '${Service} production build'
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: APP_ID
+            Value: !Ref ApplicationId
+            Type: PLAINTEXT
+          - Name: ARTIFACTS_BUCKET
+            Value: !Ref ArtifactsBucket
+            Type: PLAINTEXT
+        Image: aws/codebuild/python:3.6.5
+        Type: LINUX_CONTAINER
+      Name: !Ref Service
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        BuildSpec: infrastructure/buildspec.yml
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 15
+
+  GitHubWebhook:
+    Type: AWS::CodePipeline::Webhook
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration:
+        SecretToken: !Ref GitHubOAuthToken
+      Filters:
+        - JsonPath: '$.ref'
+          MatchEquals: 'refs/heads/{Branch}'
+      RegisterWithThirdParty: true
+      TargetPipeline: !Ref CodePipeline
+      TargetAction: GitHub
+      TargetPipelineVersion: !GetAtt CodePipeline.Version
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref ArtifactsBucket
+        Type: S3
+      Name: !Sub '${Service}-pipeline'
+      RestartExecutionOnUpdate: true
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: FetchSource
+          Actions:
+            - Name: GitHub
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: '1'
+              Configuration:
+                Repo: !Ref GitHubRepo
+                Owner: !Ref GitHubRepoOwner
+                Branch: !Ref GitHubRepoBranch
+                OAuthToken: !Ref GitHubOAuthToken
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: SourceOutput
+
+        - Name: UpdatePipeline
+          Actions:
+            - Name: UpdatePipeline
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                Capabilities: CAPABILITY_IAM
+                RoleArn: !GetAtt CloudformationRole.Arn
+                StackName: !Ref AWS::StackName
+                TemplatePath: SourceOutput::infrastructure/pipeline.yml
+                ParameterOverrides: !Sub '{"Service": "${Service}", "ApplicationId": "${ApplicationId}", "GitHubRepo": "${GitHubRepo}", "GitHubRepoOwner": "${GitHubRepoOwner}", "GitHubRepoBranch": "${GitHubRepoBranch}", "GitHubOAuthToken": "${GitHubOAuthToken}"}'
+              InputArtifacts:
+                - Name: SourceOutput
+
+        - Name: BuildDeploy
+          Actions:
+            - Name: TestPackagePublish
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput

@@ -15,4 +15,5 @@ install:
 
 script:
   - pytest tests -vrf
-  - pylint lambdacore
+  - scripts/lint_py.sh
+  - scripts/lint_cfn.sh

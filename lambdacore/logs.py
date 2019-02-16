@@ -27,12 +27,6 @@ def _add_service_context(_logger, _method, event_dict):
 
     return event_dict
 
-# I couldn't get structlog and capsys to cooperate in tests
-# hence I'm using the stdlib logger in tests so that caplog can
-# capture it and logging via printing to stdout in production
-_logger_factory = structlog.stdlib.LoggerFactory() \
-    if os.environ.get('AWS_REGION') is None \
-       else structlog.PrintLoggerFactory()
 
 structlog.configure_once(
     processors=[
@@ -44,7 +38,7 @@ structlog.configure_once(
         structlog.processors.JSONRenderer()
     ],
     context_class=dict,
-    logger_factory=_logger_factory,
+    logger_factory=structlog.stdlib.LoggerFactory(),
     cache_logger_on_first_use=True
 )
 

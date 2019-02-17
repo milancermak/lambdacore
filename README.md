@@ -3,6 +3,10 @@ An AWS Lambda Layer of various core functions I use all the time in my Lambda fu
 
 [![Build Status](https://travis-ci.com/milancermak/lambdacore.svg?branch=master)](https://travis-ci.com/milancermak/lambdacore)
 
+The layer is available on the [Serverless Application Repository](https://serverlessrepo.aws.amazon.com/applications/arn:aws:serverlessrepo:us-east-1:790194644437:applications~python-lambdacore) so you can easily deploy it to your AWS organization.
+
+Alternatively, clone this repo, execute the `scripts/build_layer.sh` which will create a `layer.zip` and then use the [`publish-layer-version`](https://docs.aws.amazon.com/cli/latest/reference/lambda/publish-layer-version.html) API to make it available to your Lambda functions.
+
 ## Modules
 
 ### logs
@@ -105,7 +109,3 @@ jay_again = serializer.deserialize(json.dumps(se_jay), Athlete) # jay, recreated
 The only necessary part to make a class compatible with the serializer is the `deserialized_types` variable. It's a mapping between the name of the attribute and the type it is (de)serialized to/from. It can also be another class, as long as it's `import`able. See the [test file](tests/test_serializer.py) for more (senseless) examples. The `attribute_map` serves as a translation map between the attribute names of the Python class and those used in the resulting dictionary (eventually JSON).
 
 For even greater convenience, I recommend using the great [attrs](http://attrs.org/) library to build your models.
-
-## Building & publishing the layer
-
-There are two shell scripts in the repo. First, `build_archive.sh` creates a `layer.zip` file that contains the files in the [necessary structure](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html#configuration-layers-path) for the layer to work in Lambda. The second, `publish_layer.sh` is just an AWS CLI command that makes the layer available for use.

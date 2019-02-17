@@ -12,7 +12,8 @@ phases:
   install:
     commands:
       - printenv
-      - apt-get update && apt-get install zip
+      - apt-get -qq update && apt-get -qq install zip
+      - pip install -q awscli --upgrade --user
       - aws --version
       - chmod +x scripts/*.sh # for some reason, +x does not carry over from git
       - scripts/install_deps.sh
@@ -31,32 +32,30 @@ phases:
   post_build:
     commands:
       # ensure we're not deploying a stale version
-      - NEW_VERSION=$(cat SAR_APP_VERSION.txt)
-      - LATEST_VERSION=$(aws serverlessrepo list-application-versions \
-                             --application-id $APP-ID \
-                             --query 'Versions[0].SemanticVersion')
-      - if [ "$LATEST_VERSION" == "$NEW_VERSION" ]; then \
-          echo "Trying to deploy version $NEW_VERSION that already exists in SAR"; exit 1; \
-        fi
+      - scripts/assert_new_version.sh
 
       # make the layer available to SAR
-      - sam package \
+      - |
+        aws cloudformation package \
             --template-file template.yml \
             --s3-bucket $ARTIFACTS_BUCKET \
             --output-template-file packaged.yml
-      - "OBJECT_KEY=$(perl -n -e'/ContentUri: (.*)/ && print $1;' < packaged.yml | cut -f4 -d/)"
-      - aws s3api put-object-acl \
+      - OBJECT_KEY=$(cat packaged.yml | grep ContentUri | cut -f 4 -d '/')
+      - |
+        aws s3api put-object-acl \
             --bucket $ARTIFACTS_BUCKET \
             --key $OBJECT_KEY \
             --acl public-read
 
       # publish the new version, keep the app up-to-date
-      - aws serverlessrepo create-application-version \
+      - |
+        aws serverlessrepo create-application-version \
             --application-id $APP_ID \
-            --semantic-version $NEW_VERSION \
+            --semantic-version `cat SAR_APP_VERSION.txt` \
             --source-code-url 'https://github.com/milancermak/lambdacore' \
             --template-body file://packaged.yml
-      - aws serverlessrepo update-application \
+      - |
+        aws serverlessrepo update-application \
             --application-id $APP_ID \
             --readme-body file://README.md
 

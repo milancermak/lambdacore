@@ -1,7 +1,7 @@
 # lambdacore
 An AWS Lambda Layer of various core functions I use all the time in my Lambda functions.
 
-[![Build Status](https://travis-ci.com/milancermak/lambda-layer-core.svg?branch=master)](https://travis-ci.com/milancermak/lambda-layer-core)
+[![Build Status](https://travis-ci.com/milancermak/lambdacore.svg?branch=master)](https://travis-ci.com/milancermak/lambdacore)
 
 ## Modules
 

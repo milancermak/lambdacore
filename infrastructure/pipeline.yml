@@ -62,7 +62,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
 
-  # TODO: allow codebuild to push to SAR
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -85,18 +84,25 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - serverlessrepo:ListApplicationVersions
                 Resource: '*'
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
+                  - s3:PutObjectAcl
                 Resource: !Sub '${ArtifactsBucket.Arn}/*'
               - Sid: SamTranslateDependencyPolicy
                 Effect: Allow
                 Action:
                   - iam:ListPolicies
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - serverlessrepo:CreateApplicationVersion
+                  - serverlessrepo:UpdateApplication
+                Resource: !Ref ApplicationId
 
   CodePipelineRole:
     Type: AWS::IAM::Role

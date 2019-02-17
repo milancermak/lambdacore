@@ -13,4 +13,4 @@ if [[ ! -d $PIP_CACHE ]]; then
     mkdir $PIP_CACHE
 fi
 
-find ${DIR}/.. -name 'requirements*.txt' -exec pip install -r '{}' --cache-dir ${PIP_CACHE} \;
+find ${DIR}/.. -name 'requirements*.txt' -exec pip install -r '{}' --quiet --cache-dir ${PIP_CACHE} \;
